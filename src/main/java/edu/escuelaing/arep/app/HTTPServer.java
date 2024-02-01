@@ -34,7 +34,7 @@ public class HTTPServer {
             try {
                 Socket clientSocket = serverSocket.accept();
                 handleClientConnection(clientSocket);
-            } catch (IOException e) {
+            } catch (IOException | URISyntaxException e) {
                 System.err.println("Accept failed.");
                 System.exit(1);
             }
@@ -46,8 +46,9 @@ public class HTTPServer {
      * Handles the client connection, including reading the query, processing it, and sending the response.
      * @param client The client socket for the connection.
      * @throws IOException If an I/O error occurs.
+     * @throws URISyntaxException 
      */
-    private static void handleClientConnection(Socket client) throws IOException {
+    private static void handleClientConnection(Socket client) throws IOException, URISyntaxException {
         PrintWriter out = new PrintWriter(client.getOutputStream(), true);
         BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
         String inputLine;
@@ -64,12 +65,22 @@ public class HTTPServer {
             }
         }
 
+        // Prepare to read the URI
+        URI request = new URI(query);
+
+        try {
+            HTTPResponse(out, request);
+        } catch (Exception e) {
+            System.err.println(e);
+            HTTPError(out);
+        }
+
         if(query.equals("/")){ // Return page index
-            HTTPResponse(out);
+            
         // } else if ((query.startsWith("/?name=")) && (query.length() > 7)){ // Validates the message and queries in the API
             
         } else { // Error if everything else fails
-            HTTPError(out);
+            
         }
 
         out.close();
@@ -82,13 +93,18 @@ public class HTTPServer {
      * @param outPut The PrintWriter for sending the response.
      * @throws FileNotFoundException If the index page file is not found.
      * @throws IOException If an I/O error occurs.
+     * @throws URISyntaxException 
      */
-    public static void HTTPResponse (PrintWriter outPut) throws FileNotFoundException, IOException {
+    public static void HTTPResponse (PrintWriter outPut, URI request) throws FileNotFoundException, IOException, URISyntaxException {
         // Send headers to the client
-        serverResponseHeaders.setContentType("html");
+        String extension = request.toString();
+        extension = extension.substring(extension.lastIndexOf("."));
+        extension = extension.replace(".", "");
+        System.out.println(""+extension);
+        serverResponseHeaders.setContentType(extension);
         outPut.println(serverResponseHeaders.OKResponse());
         // Send index.html to the client
-        outPut.println(serverResponseData.getIndexPage());
+        outPut.println(serverResponseData.getFileData(request));
     }
 
     /**
