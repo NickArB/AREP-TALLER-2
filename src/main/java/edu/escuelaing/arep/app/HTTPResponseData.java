@@ -1,11 +1,10 @@
 package edu.escuelaing.arep.app;
 
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.Socket;
 import java.net.URI;
-import java.nio.charset.Charset;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -21,39 +20,25 @@ public class HTTPResponseData {
     /**
      * Generates the HTML content for the index page, which includes a form to query movies and a
      * div to display the API response as an HTML table.
-     * @return The HTML content for the index page.
+     * @param requestedfile The URI of the requested file
+     * @param client The socket used to communicate with the client
      * @throws IOException 
      */
-    public String getFileData(URI requestedfile) throws IOException{
-        String outPut = null;
-        Path file = Paths.get("web-files" + requestedfile.getPath());
-        Charset charset = Charset.forName("UTF-8");
-        BufferedReader reader = Files.newBufferedReader(file, charset);
-        String line = null;
-        while((line = reader.readLine()) != null){
-            System.out.println(line);
-            outPut += line;
-        }
-        reader.close();
-        return outPut;
+    public void sendFileData(URI requestedfile, Socket client) throws IOException{
+        OutputStream out = client.getOutputStream();
+        Path imagePath = Paths.get("web-files", requestedfile.getPath());
+        byte[] imageData = Files.readAllBytes(imagePath);
+        out.write(imageData);
+        out.flush();
+        out.close();
     }
 
     /**
-     * Generates the HTML content for the "not found" page, indicating that the requested resource does not exist.
-     * @return The HTML content for the "not found" page.
+     * Calls the HTML content for the "not found" page, indicating that the requested resource does not exist.
+     * @throws URISyntaxException 
+     * @throws IOException 
      */
-    public String getNotFoundPage(){
-        return "<!DOCTYPE html>\r\n" +
-                    "<html>\r\n" +
-                        "<h1>Error, the resource does not exist</h1>\r\n" +
-                    "</html>";
-    }
-
-    /**
-     * Returns a JSON error message indicating that the requested resource was not found.
-     * @return The JSON error message.
-     */
-    public String getJSONErrorMessage(){
-        return "{\"Not found\":\"The resource that you were looking for does not exist\"}";
+    public void sendNotFoundPage(Socket client) throws IOException, URISyntaxException{
+        sendFileData(new URI("/not-found.html"), client);
     }
 }

@@ -8,6 +8,8 @@ package edu.escuelaing.arep.app;
 public class HTTPResponseHeaders {
 
     private String CONTENT_TYPE;
+    private String[] textFilesLst = {"json", "html", "text"};
+    private String[] mediaFilesLst = {"jpeg", "png", "ico"};
 
     /**
      * Constructs an `HTTPResponseHeaders` object with the specified content type.
@@ -22,9 +24,24 @@ public class HTTPResponseHeaders {
      * @return The HTTP response headers for a successful response.
      */
     public String OKResponse(){
-        return "HTTP/1.1 200 OK\r\n" +
-                "Content-Type: text/" + this.CONTENT_TYPE + "\r\n" +
+        String reponse = "HTTP/1.1 200 OK\r\n" +
+                        "Content-Type: text/" + this.CONTENT_TYPE + "\r\n" +
+                        "";
+
+        if(CONTENT_TYPE.equals("ico")){
+            reponse = "HTTP/1.1 200 OK\r\n" +
+                "Content-Type: image/x-" + this.CONTENT_TYPE + "\r\n" +
                 "";
+        }
+
+        for(String contentType: this.mediaFilesLst){
+            if(CONTENT_TYPE.equals(contentType)){
+                return "HTTP/1.1 200 OK\r\n" +
+                        "Content-Type: image/" + this.CONTENT_TYPE + "\r\n" +
+                "";
+            }
+        }
+        return reponse;
     }
 
     /**

@@ -1,6 +1,10 @@
 package edu.escuelaing.arep.app;
 
 import java.net.*;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.io.*;
 
 /**
@@ -22,7 +26,7 @@ public class HTTPServer {
     public static void main(String[] args) throws IOException {
         ServerSocket serverSocket = null;
         try {
-            serverSocket = new ServerSocket(35500);
+            serverSocket = new ServerSocket(35000);
         } catch (IOException e) {
             System.err.println("Could not listen on port: 35000.");
             System.exit(1);
@@ -67,20 +71,23 @@ public class HTTPServer {
 
         // Prepare to read the URI
         URI request = new URI(query);
+        String apiRequest = null;
 
         try {
-            HTTPResponse(out, request);
+            // Check for API services
+            if(request.getPath().startsWith("/change-img")){
+                apiRequest = "/k" + request.getPath().split("/")[2] + ".jpeg";
+                request = new URI(apiRequest);
+            }
+            // Validates if the file exists
+            if(!Files.exists(Paths.get("web-files", request.getPath()))){
+                throw new NoSuchFileException("File: " + request.getPath() + " does not exists!");
+            }
+            //Return HTTP response
+            HTTPResponse(out, client, request);
         } catch (Exception e) {
             System.err.println(e);
-            HTTPError(out);
-        }
-
-        if(query.equals("/")){ // Return page index
-            
-        // } else if ((query.startsWith("/?name=")) && (query.length() > 7)){ // Validates the message and queries in the API
-            
-        } else { // Error if everything else fails
-            
+            HTTPError(out, client);
         }
 
         out.close();
@@ -91,32 +98,43 @@ public class HTTPServer {
     /**
      * Sends the HTTP response for the index page to the client.
      * @param outPut The PrintWriter for sending the response.
+     * @param client The socket used to communicate with the client
+     * @param request The request from the client
      * @throws FileNotFoundException If the index page file is not found.
      * @throws IOException If an I/O error occurs.
      * @throws URISyntaxException 
      */
-    public static void HTTPResponse (PrintWriter outPut, URI request) throws FileNotFoundException, IOException, URISyntaxException {
+    public static void HTTPResponse (PrintWriter outPut, Socket client, URI request) throws FileNotFoundException, IOException, URISyntaxException {
         // Send headers to the client
         String extension = request.toString();
-        extension = extension.substring(extension.lastIndexOf("."));
-        extension = extension.replace(".", "");
-        System.out.println(""+extension);
+        extension = extension.substring(extension.lastIndexOf(".") + 1);
+        // Set content type
         serverResponseHeaders.setContentType(extension);
         outPut.println(serverResponseHeaders.OKResponse());
+        // Prevents the connection to be closed by exchanging output stream
+        outPut.flush();
         // Send index.html to the client
-        outPut.println(serverResponseData.getFileData(request));
+        serverResponseData.sendFileData(request, client);
     }
 
     /**
      * Sends the HTTP error response to the client.
      * @param outPut The PrintWriter for sending the response.
+     * @throws URISyntaxException
+     * @throws IOException
      */
-    private static void HTTPError(PrintWriter outPut) {
+    private static void HTTPError(PrintWriter outPut, Socket client) {
         // Send headers to the client
         serverResponseHeaders.setContentType("html");
         outPut.println(serverResponseHeaders.NotFoundResponse());
+        // Prevents the connection to be closed by exchanging output stream
+        outPut.flush();
         // Send HTML structure to the client
-        outPut.println(serverResponseData.getNotFoundPage());
+        try {
+            serverResponseData.sendNotFoundPage(client);
+        } catch (IOException | URISyntaxException e) {
+            System.err.println(e);
+        }
     }
 }
 
